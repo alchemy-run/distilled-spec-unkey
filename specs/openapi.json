@@ -1,9 +1,15 @@
 {
   "components": {
     "securitySchemes": {
+      "dashboard": {
+        "bearerFormat": "JWT",
+        "description": "Short-lived bearer token used by the Unkey dashboard when it calls api.unkey.com.\nBrowser clients should call the dashboard `/proxy/...` route without an Authorization header. The dashboard server mints and attaches this token upstream.",
+        "scheme": "bearer",
+        "type": "http"
+      },
       "rootKey": {
         "bearerFormat": "root key",
-        "description": "Unkey uses API keys (root keys) for authentication. These keys authorize access to management operations in the API.\nTo authenticate, include your root key in the Authorization header of each request:\n```\nAuthorization: Bearer unkey_123\n```\nRoot keys have specific permissions attached to them, controlling what operations they can perform. Key permissions follow a hierarchical structure with patterns like `resource.resource_id.action` (e.g., `apis.*.create_key`, `apis.*.read_api`).\nSecurity best practices:\n- Keep root keys secure and never expose them in client-side code\n- Use different root keys for different environments\n- Rotate keys periodically, especially after team member departures\n- Create keys with minimal necessary permissions following least privilege principle\n- Monitor key usage with audit logs.",
+        "description": "Unkey uses API keys (root keys) for authentication. These keys authorize access to management operations in the API.\nTo authenticate, include your root key in the Authorization header of each request:\n```\nAuthorization: Bearer unkey_123\n```\nRoot keys have specific permissions attached to them, controlling what operations they can perform. Legacy permissions use tuple strings like `api.*.create_key`; resource permissions use Unkey Resource Names plus actions, like `unkey:v1:ws_123:keyspaces/*#create_key`.\nSecurity best practices:\n- Keep root keys secure and never expose them in client-side code\n- Use different root keys for different environments\n- Rotate keys periodically, especially after team member departures\n- Create keys with minimal necessary permissions following least privilege principle\n- Monitor key usage with audit logs.",
         "scheme": "bearer",
         "type": "http"
       }
@@ -4321,7 +4327,7 @@
     }
   },
   "info": {
-    "description": "Unkey's API provides programmatic access for all resources within our platform.\n\n\n### Authentication\n#\nThis API uses HTTP Bearer authentication with root keys. Most endpoints require specific permissions associated with your root key. When making requests, include your root key in the `Authorization` header:\n```\nAuthorization: Bearer unkey_xxxxxxxxxxx\n```\n\nAll responses follow a consistent envelope structure that separates operational metadata from actual data. This design provides several benefits:\n- Debugging: Every response includes a unique requestId for tracing issues\n- Consistency: Predictable response format across all endpoints\n- Extensibility: Easy to add new metadata without breaking existing integrations\n- Error Handling: Unified error format with actionable information\n\n### Success Response Format:\n```json\n{\n  \"meta\": {\n    \"requestId\": \"req_123456\"\n  },\n  \"data\": {\n    // Actual response data here\n  }\n}\n```\n\nThe meta object contains operational information:\n- `requestId`: Unique identifier for this request (essential for support)\n\nThe data object contains the actual response data specific to each endpoint.\n\n### Paginated Response Format:\n```json\n{\n  \"meta\": {\n    \"requestId\": \"req_123456\"\n  },\n  \"data\": [\n    // Array of results\n  ],\n  \"pagination\": {\n    \"cursor\": \"next_page_token\",\n    \"hasMore\": true\n  }\n}\n```\n\nThe pagination object appears on list endpoints and contains:\n- `cursor`: Token for requesting the next page\n- `hasMore`: Whether more results are available\n\n### Error Response Format:\n```json\n{\n  \"meta\": {\n    \"requestId\": \"req_2c9a0jf23l4k567\"\n  },\n  \"error\": {\n    \"detail\": \"The resource you are attempting to modify is protected and cannot be changed\",\n    \"status\": 403,\n    \"title\": \"Forbidden\",\n    \"type\": \"https://unkey.com/docs/errors/unkey/application/protected_resource\"\n  }\n}\n```\n\nError responses include comprehensive diagnostic information:\n- `title`: Human-readable error summary\n- `detail`: Specific description of what went wrong\n- `status`: HTTP status code\n- `type`: Link to error documentation\n- `errors`: Array of validation errors (for 400 responses)\n\nThis structure ensures you always have the context needed to debug issues and take corrective action.",
+    "description": "Unkey's API provides programmatic access for all resources within our platform.\n\n\n### Authentication\n#\nThis API accepts HTTP Bearer credentials. Public integrations use root keys. Dashboard-originated requests use a short-lived dashboard proxy JWT minted by the dashboard server. Most endpoints require permissions associated with the authenticated principal. When making public API requests, include your root key in the `Authorization` header:\n```\nAuthorization: Bearer unkey_xxxxxxxxxxx\n```\n\nAll responses follow a consistent envelope structure that separates operational metadata from actual data. This design provides several benefits:\n- Debugging: Every response includes a unique requestId for tracing issues\n- Consistency: Predictable response format across all endpoints\n- Extensibility: Easy to add new metadata without breaking existing integrations\n- Error Handling: Unified error format with actionable information\n\n### Success Response Format:\n```json\n{\n  \"meta\": {\n    \"requestId\": \"req_123456\"\n  },\n  \"data\": {\n    // Actual response data here\n  }\n}\n```\n\nThe meta object contains operational information:\n- `requestId`: Unique identifier for this request (essential for support)\n\nThe data object contains the actual response data specific to each endpoint.\n\n### Paginated Response Format:\n```json\n{\n  \"meta\": {\n    \"requestId\": \"req_123456\"\n  },\n  \"data\": [\n    // Array of results\n  ],\n  \"pagination\": {\n    \"cursor\": \"next_page_token\",\n    \"hasMore\": true\n  }\n}\n```\n\nThe pagination object appears on list endpoints and contains:\n- `cursor`: Token for requesting the next page\n- `hasMore`: Whether more results are available\n\n### Error Response Format:\n```json\n{\n  \"meta\": {\n    \"requestId\": \"req_2c9a0jf23l4k567\"\n  },\n  \"error\": {\n    \"detail\": \"The resource you are attempting to modify is protected and cannot be changed\",\n    \"status\": 403,\n    \"title\": \"Forbidden\",\n    \"type\": \"https://unkey.com/docs/errors/unkey/application/protected_resource\"\n  }\n}\n```\n\nError responses include comprehensive diagnostic information:\n- `title`: Human-readable error summary\n- `detail`: Specific description of what went wrong\n- `status`: HTTP status code\n- `type`: Link to error documentation\n- `errors`: Array of validation errors (for 400 responses)\n\nThis structure ensures you always have the context needed to debug issues and take corrective action.",
     "title": "Unkey API",
     "version": "2.0.0"
   },
@@ -4828,6 +4834,9 @@
         "security": [
           {
             "rootKey": []
+          },
+          {
+            "dashboard": []
           }
         ],
         "summary": "List API keys",
@@ -6899,6 +6908,9 @@
         "security": [
           {
             "rootKey": []
+          },
+          {
+            "dashboard": []
           }
         ],
         "summary": "Add key permissions",
@@ -6997,6 +7009,9 @@
         "security": [
           {
             "rootKey": []
+          },
+          {
+            "dashboard": []
           }
         ],
         "summary": "Add key roles",
@@ -7008,7 +7023,7 @@
     },
     "/v2/keys.createKey": {
       "post": {
-        "description": "Create a new API key for user authentication and authorization.\n\nUse this endpoint when users sign up, upgrade subscription tiers, or need additional keys. Keys are cryptographically secure and unique to the specified API namespace.\n\n**Important**: The key is returned only once. Store it immediately and provide it to your user, as it cannot be retrieved later.\n\n**Common use cases:**\n- Generate keys for new user registrations\n- Create additional keys for different applications\n- Issue keys with specific permissions or limits\n\n**Required Permissions**\n\nYour root key needs one of:\n- `api.*.create_key` (create keys in any API)\n- `api.<api_id>.create_key` (create keys in specific API)\n",
+        "description": "Create a new API key for user authentication and authorization.\n\nUse this endpoint when users sign up, upgrade subscription tiers, or need additional keys. Keys are cryptographically secure and unique to the specified API namespace.\n\n**Important**: The key is returned only once. Store it immediately and provide it to your user, as it cannot be retrieved later.\n\n**Common use cases:**\n- Generate keys for new user registrations\n- Create additional keys for different applications\n- Issue keys with specific permissions or limits\n\n**Required Permissions**\n\nYour credential needs one of:\n- `api.*.create_key` (create keys in any API)\n- `api.<api_id>.create_key` (create keys in specific API)\n- `unkey:v1:<workspace_id>:keyspaces/*#create_key` (create keys in any keyspace)\n- `unkey:v1:<workspace_id>:keyspaces/<keyspace_id>#create_key` (create keys in a specific keyspace)\n",
         "operationId": "keys.createKey",
         "requestBody": {
           "content": {
@@ -7095,6 +7110,9 @@
         "security": [
           {
             "rootKey": []
+          },
+          {
+            "dashboard": []
           }
         ],
         "summary": "Create API key",
@@ -7106,7 +7124,7 @@
     },
     "/v2/keys.deleteKey": {
       "post": {
-        "description": "Delete API keys permanently from user accounts or for cleanup purposes.\n\nUse this for user-requested key deletion, account deletion workflows, or cleaning up unused keys. Keys are immediately invalidated. Two modes: soft delete (default, preserves audit records) and permanent delete.\n\n**Important**: For temporary access control, use `updateKey` with `enabled: false` instead of deletion.\n\n**Required Permissions**\n\nYour root key must have one of the following permissions:\n- `api.*.delete_key` (to delete keys in any API)\n- `api.<api_id>.delete_key` (to delete keys in a specific API)\n",
+        "description": "Delete API keys from user accounts or for cleanup purposes.\n\nUse this for user-requested key revocation, account deletion workflows, or cleaning up unused keys. Keys are immediately invalidated. Two modes: soft delete (default, preserves audit records) and permanent delete.\n\n**Important**: For temporary access control, use `updateKey` with `enabled: false` instead of deletion.\n\n**Required Permissions**\n\nYour credential must have one of the following permissions:\n- `api.*.delete_key` (to delete keys in any API)\n- `api.<api_id>.delete_key` (to delete keys in a specific API)\n- `unkey:v1:<workspace_id>:keyspaces/*/keys/*#delete_key` (to delete keys in any keyspace)\n- `unkey:v1:<workspace_id>:keyspaces/<keyspace_id>/keys/*#delete_key` (to delete keys in a specific keyspace)\n- `unkey:v1:<workspace_id>:keyspaces/<keyspace_id>/keys/<key_id>#delete_key` (to delete a specific key)\n",
         "operationId": "keys.deleteKey",
         "requestBody": {
           "content": {
@@ -7193,6 +7211,9 @@
         "security": [
           {
             "rootKey": []
+          },
+          {
+            "dashboard": []
           }
         ],
         "summary": "Delete API keys",
@@ -7204,7 +7225,7 @@
     },
     "/v2/keys.getKey": {
       "post": {
-        "description": "Retrieve detailed key information for dashboard interfaces and administrative purposes.\n\nUse this to build key management dashboards showing users their key details, status, permissions, and usage data. You can identify keys by `keyId` or the actual key string.\n\n**Important**: Set `decrypt: true` only in secure contexts to retrieve plaintext key values from recoverable keys.\n\n**Required Permissions**\n\nYour root key must have one of the following permissions for basic key information:\n- `api.*.read_key` (to read keys from any API)\n- `api.<api_id>.read_key` (to read keys from a specific API)\n\nAdditional permission required for decrypt functionality:\n- `api.*.decrypt_key` or `api.<api_id>.decrypt_key`\n",
+        "description": "Retrieve detailed key information for dashboard interfaces and administrative purposes.\n\nUse this to build key management dashboards showing users their key details, status, permissions, and usage data. You can identify keys by `keyId` or the actual key string.\n\n**Important**: Set `decrypt: true` only in secure contexts to retrieve plaintext key values from recoverable keys.\n\n**Required Permissions**\n\nYour credential must have one of the following permissions for basic key information:\n- `api.*.read_key` (to read keys from any API)\n- `api.<api_id>.read_key` (to read keys from a specific API)\n- `unkey:v1:<workspace_id>:keyspaces/*/keys/*#read_key` (to read keys in any keyspace)\n- `unkey:v1:<workspace_id>:keyspaces/<keyspace_id>/keys/*#read_key` (to read keys in a specific keyspace)\n- `unkey:v1:<workspace_id>:keyspaces/<keyspace_id>/keys/<key_id>#read_key` (to read a specific key)\n\nAdditional permission required for decrypt functionality:\n- `api.*.decrypt_key` or `api.<api_id>.decrypt_key`\n- `unkey:v1:<workspace_id>:keyspaces/*/keys/*#decrypt_key`\n- `unkey:v1:<workspace_id>:keyspaces/<keyspace_id>/keys/*#decrypt_key`\n- `unkey:v1:<workspace_id>:keyspaces/<keyspace_id>/keys/<key_id>#decrypt_key`\n",
         "operationId": "keys.getKey",
         "requestBody": {
           "content": {
@@ -7291,6 +7312,9 @@
         "security": [
           {
             "rootKey": []
+          },
+          {
+            "dashboard": []
           }
         ],
         "summary": "Get API key",
@@ -7487,6 +7511,9 @@
         "security": [
           {
             "rootKey": []
+          },
+          {
+            "dashboard": []
           }
         ],
         "summary": "Remove key permissions",
@@ -7585,6 +7612,9 @@
         "security": [
           {
             "rootKey": []
+          },
+          {
+            "dashboard": []
           }
         ],
         "summary": "Remove key roles",
@@ -7596,7 +7626,7 @@
     },
     "/v2/keys.rerollKey": {
       "post": {
-        "description": "Generate a new API key while preserving the configuration from an existing key.\n\nThis operation creates a fresh key with a new token while maintaining all settings from the original key:\n- Permissions and roles\n- Custom metadata\n- Rate limit configurations\n- Identity associations\n- Remaining credits\n- Recovery settings\n\n**Key Generation:**\n- The system attempts to extract the prefix from the original key\n- If prefix extraction fails, the default API prefix is used\n- Key length follows the API's default byte configuration (or 16 bytes if not specified)\n\n**Original Key Handling:**\n- The original key will be revoked after the duration specified in `expiration`\n- Set `expiration` to 0 to revoke immediately\n- This allows for graceful key rotation with an overlap period\n\nCommon use cases include:\n- Rotating keys for security compliance\n- Issuing replacement keys for compromised credentials\n- Creating backup keys with identical permissions\n\n**Important:** Analytics and usage metrics are tracked at both the key level AND identity level. If the original key has an identity, the new key will inherit it, allowing you to track usage across both individual keys and the overall identity.\n\n**Required Permissions**\n\n Your root key must have:\n - `api.*.create_key` or `api.<api_id>.create_key`\n - `api.*.encrypt_key` or `api.<api_id>.encrypt_key` (only when the original key is recoverable)\n",
+        "description": "Generate a new API key while preserving the configuration from an existing key.\n\nThis operation creates a fresh key with a new token while maintaining all settings from the original key:\n- Permissions and roles\n- Custom metadata\n- Rate limit configurations\n- Identity associations\n- Remaining credits\n- Recovery settings\n\n**Key Generation:**\n- The system attempts to extract the prefix from the original key\n- If prefix extraction fails, the default API prefix is used\n- Key length follows the API's default byte configuration (or 16 bytes if not specified)\n\n**Original Key Handling:**\n- The original key will be revoked after the duration specified in `expiration`\n- Set `expiration` to 0 to revoke immediately\n- This allows for graceful key rotation with an overlap period\n\nCommon use cases include:\n- Rotating keys for security compliance\n- Issuing replacement keys for compromised credentials\n- Creating backup keys with identical permissions\n\n**Important:** Analytics and usage metrics are tracked at both the key level AND identity level. If the original key has an identity, the new key will inherit it, allowing you to track usage across both individual keys and the overall identity.\n\n**Required Permissions**\n\n Your credential must have:\n - `api.*.create_key` or `api.<api_id>.create_key`\n - `unkey:v1:<workspace_id>:keyspaces/*#create_key` or `unkey:v1:<workspace_id>:keyspaces/<keyspace_id>#create_key`\n - `api.*.encrypt_key` or `api.<api_id>.encrypt_key` (only when the original key is recoverable)\n - `unkey:v1:<workspace_id>:keyspaces/*/keys/*#encrypt_key` or `unkey:v1:<workspace_id>:keyspaces/<keyspace_id>/keys/*#encrypt_key` (only when the original key is recoverable)\n",
         "operationId": "keys.rerollKey",
         "requestBody": {
           "content": {
@@ -7683,6 +7713,9 @@
         "security": [
           {
             "rootKey": []
+          },
+          {
+            "dashboard": []
           }
         ],
         "summary": "Reroll Key",
@@ -7781,6 +7814,9 @@
         "security": [
           {
             "rootKey": []
+          },
+          {
+            "dashboard": []
           }
         ],
         "summary": "Set key permissions",
@@ -7879,6 +7915,9 @@
         "security": [
           {
             "rootKey": []
+          },
+          {
+            "dashboard": []
           }
         ],
         "summary": "Set key roles",
@@ -7890,7 +7929,7 @@
     },
     "/v2/keys.updateCredits": {
       "post": {
-        "description": "Update credit quotas in response to plan changes, billing cycles, or usage purchases.\n\nUse this for user upgrades/downgrades, monthly quota resets, credit purchases, or promotional bonuses. Supports three operations: set, increment, or decrement credits. Set to null for unlimited usage.\n\n**Important**: Setting unlimited credits automatically clears existing refill configurations.\n\n**Required Permissions**\n\nYour root key must have one of the following permissions:\n- `api.*.update_key` (to update keys in any API)\n- `api.<api_id>.update_key` (to update keys in a specific API)\n\n**Side Effects**\n\nCredit updates remove the key from cache immediately. Setting credits to unlimited automatically clears any existing refill settings. Changes take effect instantly but may take up to 30 seconds to propagate to all edge regions.\n",
+        "description": "Update credit quotas in response to plan changes, billing cycles, or usage purchases.\n\nUse this for user upgrades/downgrades, monthly quota resets, credit purchases, or promotional bonuses. Supports three operations: set, increment, or decrement credits. Set to null for unlimited usage.\n\n**Important**: Setting unlimited credits automatically clears existing refill configurations.\n\n**Required Permissions**\n\nYour credential must have one of the following permissions:\n- `api.*.update_key` (to update keys in any API)\n- `api.<api_id>.update_key` (to update keys in a specific API)\n- `unkey:v1:<workspace_id>:keyspaces/*/keys/*#update_key` (to update keys in any keyspace)\n- `unkey:v1:<workspace_id>:keyspaces/<keyspace_id>/keys/*#update_key` (to update keys in a specific keyspace)\n- `unkey:v1:<workspace_id>:keyspaces/<keyspace_id>/keys/<key_id>#update_key` (to update a specific key)\n\n**Side Effects**\n\nCredit updates remove the key from cache immediately. Setting credits to unlimited automatically clears any existing refill settings. Changes take effect instantly but may take up to 30 seconds to propagate to all edge regions.\n",
         "operationId": "keys.updateCredits",
         "requestBody": {
           "content": {
@@ -7977,6 +8016,9 @@
         "security": [
           {
             "rootKey": []
+          },
+          {
+            "dashboard": []
           }
         ],
         "summary": "Update key credits",
@@ -7988,7 +8030,7 @@
     },
     "/v2/keys.updateKey": {
       "post": {
-        "description": "Update key properties in response to plan changes, subscription updates, or account status changes.\n\nUse this for user upgrades/downgrades, role modifications, or administrative changes. Supports partial updates - only specify fields you want to change. Set fields to null to clear them.\n\n**Important**: Permissions and roles are replaced entirely. Use dedicated add/remove endpoints for incremental changes.\n\n**Required Permissions**\n\nYour root key must have one of the following permissions:\n- `api.*.update_key` (to update keys in any API)\n- `api.<api_id>.update_key` (to update keys in a specific API)\n\n**Side Effects**\n\nIf you specify an `externalId` that doesn't exist, a new identity will be automatically created and linked to the key. Permission updates will auto-create any permissions that don't exist in your workspace. Changes take effect immediately but may take up to 30 seconds to propagate to all edge regions due to cache invalidation.\n",
+        "description": "Update key properties in response to plan changes, subscription updates, or account status changes.\n\nUse this for user upgrades/downgrades, role modifications, or administrative changes. Supports partial updates - only specify fields you want to change. Set fields to null to clear them.\n\n**Important**: Permissions and roles are replaced entirely. Use dedicated add/remove endpoints for incremental changes.\n\n**Required Permissions**\n\nYour credential must have one of the following permissions:\n- `api.*.update_key` (to update keys in any API)\n- `api.<api_id>.update_key` (to update keys in a specific API)\n- `unkey:v1:<workspace_id>:keyspaces/*/keys/*#update_key` (to update keys in any keyspace)\n- `unkey:v1:<workspace_id>:keyspaces/<keyspace_id>/keys/*#update_key` (to update keys in a specific keyspace)\n- `unkey:v1:<workspace_id>:keyspaces/<keyspace_id>/keys/<key_id>#update_key` (to update a specific key)\n\n**Side Effects**\n\nIf you specify an `externalId` that doesn't exist, a new identity will be automatically created and linked to the key. Permission updates will auto-create any permissions that don't exist in your workspace. Changes take effect immediately but may take up to 30 seconds to propagate to all edge regions due to cache invalidation.\n",
         "operationId": "keys.updateKey",
         "requestBody": {
           "content": {
@@ -8086,6 +8128,9 @@
         "security": [
           {
             "rootKey": []
+          },
+          {
+            "dashboard": []
           }
         ],
         "summary": "Update key settings",
@@ -8097,7 +8142,7 @@
     },
     "/v2/keys.verifyKey": {
       "post": {
-        "description": "Verify an API key's validity and permissions for request authentication.\n\nUse this endpoint on every incoming request to your protected resources. It checks key validity, permissions, rate limits, and usage quotas in a single call.\n\n**Important**: Returns HTTP 200 for all verification outcomes — check the `valid` field in response data to determine if the key is authorized. A 429 may be returned if the workspace exceeds its API rate limit.\n\n**Common use cases:**\n- Authenticate API requests before processing\n- Enforce permission-based access control\n- Track usage and apply rate limits\n\n**Required Permissions**\n\nYour root key needs one of:\n- `api.*.verify_key` (verify keys in any API)\n- `api.<api_id>.verify_key` (verify keys in specific API)\n\n**Note**: If your root key has no verify permissions at all, you will receive a `403 Forbidden` error. If your root key has verify permissions for a different API than the key you're verifying, you will receive a `200` response with `code: NOT_FOUND` to avoid leaking key existence.\n",
+        "description": "Verify an API key's validity and permissions for request authentication.\n\nUse this endpoint on every incoming request to your protected resources. It checks key validity, permissions, rate limits, and usage quotas in a single call.\n\n**Important**: Returns HTTP 200 for all verification outcomes — check the `valid` field in response data to determine if the key is authorized. A 429 may be returned if the workspace exceeds its API rate limit.\n\n**Common use cases:**\n- Authenticate API requests before processing\n- Enforce permission-based access control\n- Track usage and apply rate limits\n\n**Required Permissions**\n\nYour credential needs one of:\n- `api.*.verify_key` (verify keys in any API)\n- `api.<api_id>.verify_key` (verify keys in specific API)\n- `unkey:v1:<workspace_id>:keyspaces/*/keys/*#verify_key` (verify keys in any keyspace)\n- `unkey:v1:<workspace_id>:keyspaces/<keyspace_id>/keys/*#verify_key` (verify keys in a specific keyspace)\n- `unkey:v1:<workspace_id>:keyspaces/<keyspace_id>/keys/<key_id>#verify_key` (verify a specific key)\n\n**Note**: If your credential has no verify permissions at all, you will receive a `403 Forbidden` error. If your credential has verify permissions for a different API or keyspace than the key you're verifying, you will receive a `200` response with `code: NOT_FOUND` to avoid leaking key existence.\n",
         "operationId": "keys.verifyKey",
         "requestBody": {
           "content": {
@@ -8171,7 +8216,7 @@
                 }
               }
             },
-            "description": "Forbidden. Returned when the root key has no verify permissions at all (neither `api.*.verify_key` nor `api.<api_id>.verify_key` for any API).\n"
+            "description": "Forbidden. Returned when the credential has no verify permissions at all.\n"
           },
           "404": {
             "content": {
@@ -8207,6 +8252,9 @@
         "security": [
           {
             "rootKey": []
+          },
+          {
+            "dashboard": []
           }
         ],
         "summary": "Verify API key",
@@ -8218,7 +8266,7 @@
     },
     "/v2/keys.whoami": {
       "post": {
-        "description": "Find out what key this is.\n\n**Required Permissions**\n\nYour root key must have one of the following permissions for basic key information:\n- `api.*.read_key` (to read keys from any API)\n- `api.<api_id>.read_key` (to read keys from a specific API)\n\nIf your rootkey lacks permissions but the key exists, we may return a 404 status here to prevent leaking the existance of a key to unauthorized clients. If you believe that a key should exist, but receive a 404, please double check your root key has the correct permissions.\n",
+        "description": "Find out what key this is.\n\n**Required Permissions**\n\nYour credential must have one of the following permissions for basic key information:\n- `api.*.read_key` (to read keys from any API)\n- `api.<api_id>.read_key` (to read keys from a specific API)\n- `unkey:v1:<workspace_id>:keyspaces/*/keys/*#read_key` (to read keys in any keyspace)\n- `unkey:v1:<workspace_id>:keyspaces/<keyspace_id>/keys/*#read_key` (to read keys in a specific keyspace)\n- `unkey:v1:<workspace_id>:keyspaces/<keyspace_id>/keys/<key_id>#read_key` (to read a specific key)\n\nIf your credential lacks permissions but the key exists, we may return a 404 status here to prevent leaking the existence of a key to unauthorized clients. If you believe that a key should exist, but receive a 404, please double check your credential has the correct permissions.\n",
         "operationId": "keys.whoami",
         "requestBody": {
           "content": {
@@ -8305,6 +8353,9 @@
         "security": [
           {
             "rootKey": []
+          },
+          {
+            "dashboard": []
           }
         ],
         "summary": "Get API key by hash",
