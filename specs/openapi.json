@@ -16,7 +16,7 @@
       }
     },
     "schemas": {
-      "V2AnalyticsGetVerificationsRequestBody": {
+      "V2AnalyticsGetRatelimitsRequestBody": {
         "type": "object",
         "required": [
           "query"
@@ -24,12 +24,12 @@
         "properties": {
           "query": {
             "type": "string",
-            "description": "SQL query to execute against your analytics data.\nOnly SELECT queries are allowed.\n",
-            "example": "SELECT COUNT(*) as total FROM key_verifications_v1 WHERE outcome = 'VALID' AND time >= now() - INTERVAL 7 DAY"
+            "description": "SQL query to execute against your rate limit analytics data.\nQueries may reference only the five public aliases: `ratelimits_v1`, `ratelimits_per_minute_v1`, `ratelimits_per_hour_v1`, `ratelimits_per_day_v1`, or `ratelimits_per_month_v1`. Physical `default.*` table names are unsupported. CTEs, subqueries, UNION, and EXCEPT are supported.\nQueries are always restricted to the authenticated workspace. Wildcard analytics permission can read every namespace in that workspace; namespace-scoped permissions automatically restrict results to the permitted namespace IDs.\nWorkspace retention and query limits apply.\n",
+            "example": "SELECT namespace_id, COUNT(*) AS total FROM ratelimits_v1 WHERE namespace_id = 'rlns_123' GROUP BY namespace_id"
           }
         }
       },
-      "V2AnalyticsGetVerificationsResponseBody": {
+      "V2AnalyticsGetRatelimitsResponseBody": {
         "type": "object",
         "required": [
           "meta",
@@ -40,7 +40,7 @@
             "$ref": "#/components/schemas/Meta"
           },
           "data": {
-            "$ref": "#/components/schemas/V2AnalyticsGetVerificationsResponseData"
+            "$ref": "#/components/schemas/V2AnalyticsGetRatelimitsResponseData"
           }
         }
       },
@@ -92,7 +92,7 @@
         },
         "description": "Error response when the provided credentials are valid but lack sufficient permissions for the requested operation. This occurs when:\n- The root key doesn't have the required permissions for this endpoint\n- The operation requires elevated privileges that the current key lacks\n- Access to the requested resource is restricted based on workspace settings\n\nTo resolve this error, ensure your root key has the necessary permissions or contact your workspace administrator."
       },
-      "NotFoundErrorResponse": {
+      "PreconditionFailedErrorResponse": {
         "type": "object",
         "required": [
           "meta",
@@ -106,7 +106,7 @@
             "$ref": "#/components/schemas/BaseError"
           }
         },
-        "description": "Error response when the requested resource cannot be found. This occurs when:\n- The specified resource ID doesn't exist in your workspace\n- The resource has been deleted or moved\n- The resource exists but is not accessible with current permissions\n\nTo resolve this error, verify the resource ID is correct and that you have access to it."
+        "description": "Error response when one or more conditions specified in the request headers are not met. This typically occurs when:\n- Using conditional requests with If-Match or If-None-Match headers\n- The resource version doesn't match the expected value\n- Optimistic concurrency control detects a conflict\n\nTo resolve this error, fetch the latest version of the resource and retry with updated conditions."
       },
       "UnprocessableEntityErrorResponse": {
         "type": "object",
@@ -171,6 +171,34 @@
           }
         },
         "description": "Error response when a required service is temporarily unavailable. This indicates that the service exists but cannot be reached or is not responding.\n\nWhen you encounter this error:\n- The service is likely experiencing temporary issues\n- Retrying the request after a short delay may succeed\n- If the error persists, the service may be undergoing maintenance\n- Contact Unkey support if the issue continues"
+      },
+      "V2AnalyticsGetVerificationsRequestBody": {
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "SQL query to execute against your analytics data.\nQueries may reference only the five public aliases: `key_verifications_v1`, `key_verifications_per_minute_v1`, `key_verifications_per_hour_v1`, `key_verifications_per_day_v1`, or `key_verifications_per_month_v1`. Physical `default.*` table names are unsupported.\nOnly SELECT queries are allowed. CTEs, subqueries, UNION, and EXCEPT are supported.\n",
+            "example": "SELECT COUNT(*) as total FROM key_verifications_v1 WHERE outcome = 'VALID' AND time >= now() - INTERVAL 7 DAY"
+          }
+        }
+      },
+      "V2AnalyticsGetVerificationsResponseBody": {
+        "type": "object",
+        "required": [
+          "meta",
+          "data"
+        ],
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "data": {
+            "$ref": "#/components/schemas/V2AnalyticsGetVerificationsResponseData"
+          }
+        }
       },
       "V2ApisCreateApiRequestBody": {
         "type": "object",
@@ -238,7 +266,7 @@
         },
         "additionalProperties": false
       },
-      "PreconditionFailedErrorResponse": {
+      "NotFoundErrorResponse": {
         "type": "object",
         "required": [
           "meta",
@@ -252,7 +280,7 @@
             "$ref": "#/components/schemas/BaseError"
           }
         },
-        "description": "Error response when one or more conditions specified in the request headers are not met. This typically occurs when:\n- Using conditional requests with If-Match or If-None-Match headers\n- The resource version doesn't match the expected value\n- Optimistic concurrency control detects a conflict\n\nTo resolve this error, fetch the latest version of the resource and retry with updated conditions."
+        "description": "Error response when the requested resource cannot be found. This occurs when:\n- The specified resource ID doesn't exist in your workspace\n- The resource has been deleted or moved\n- The resource exists but is not accessible with current permissions\n\nTo resolve this error, verify the resource ID is correct and that you have access to it."
       },
       "V2ApisGetApiRequestBody": {
         "type": "object",
@@ -3571,24 +3599,18 @@
         "additionalProperties": false,
         "description": "Metadata object included in every API response. This provides context about the request and is essential for debugging, audit trails, and support inquiries. The `requestId` is particularly important when troubleshooting issues with the Unkey support team."
       },
-      "V2AnalyticsGetVerificationsResponseData": {
+      "V2AnalyticsGetRatelimitsResponseData": {
         "type": "array",
-        "description": "Array of verification rows returned by the query. Fields vary based on the SQL SELECT clause.",
+        "description": "Array of rate limit rows returned by the query. Fields vary based on the SQL SELECT clause.",
         "items": {
           "type": "object",
           "additionalProperties": true,
-          "description": "Dynamic row with fields determined by the query. Can include any combination of fields like time, outcome, count, key_id, etc."
+          "description": "Dynamic row with fields determined by the query."
         },
         "example": [
           {
-            "outcome": "VALID",
-            "count": 1234,
-            "time": 1696118400000
-          },
-          {
-            "outcome": "RATE_LIMITED",
-            "count": 56,
-            "time": 1696118400000
+            "namespace_id": "rlns_123",
+            "total": 1234
           }
         ]
       },
@@ -3674,6 +3696,27 @@
         ],
         "type": "object",
         "description": "Individual validation error details. Each validation error provides precise information about what failed, where it failed, and how to fix it, enabling efficient error resolution."
+      },
+      "V2AnalyticsGetVerificationsResponseData": {
+        "type": "array",
+        "description": "Array of verification rows returned by the query. Fields vary based on the SQL SELECT clause.",
+        "items": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Dynamic row with fields determined by the query. Can include any combination of fields like time, outcome, count, key_id, etc."
+        },
+        "example": [
+          {
+            "outcome": "VALID",
+            "count": 1234,
+            "time": 1696118400000
+          },
+          {
+            "outcome": "RATE_LIMITED",
+            "count": 56,
+            "time": 1696118400000
+          }
+        ]
       },
       "V2ApisCreateApiResponseData": {
         "type": "object",
@@ -6595,9 +6638,127 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/v2/analytics.getRatelimits": {
+      "post": {
+        "description": "Queries may reference only the five public rate limit analytics aliases: `ratelimits_v1`, `ratelimits_per_minute_v1`, `ratelimits_per_hour_v1`, `ratelimits_per_day_v1`, or `ratelimits_per_month_v1`. CTEs, subqueries, UNION, and EXCEPT are supported.\nQueries are always restricted to the authenticated workspace. Wildcard analytics permission can read every namespace in that workspace; namespace-scoped permissions automatically restrict results to the permitted namespace IDs.\nWorkspace retention and query limits apply.\n",
+        "operationId": "analytics.getRatelimits",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2AnalyticsGetRatelimitsRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2AnalyticsGetRatelimitsResponseBody"
+                }
+              }
+            },
+            "description": "Query executed successfully"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid SQL query, blocked operation, or missing required authentication"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid authentication credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponse"
+                }
+              }
+            },
+            "description": "Insufficient permissions"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreconditionFailedErrorResponse"
+                }
+              }
+            },
+            "description": "Analytics is not configured for the workspace"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnprocessableEntityErrorResponse"
+                }
+              }
+            },
+            "description": "Query exceeds workspace query limits"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TooManyRequestsErrorResponse"
+                }
+              }
+            },
+            "description": "Query quota exceeded"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponse"
+                }
+              }
+            },
+            "description": "Query execution failed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceUnavailableErrorResponse"
+                }
+              }
+            },
+            "description": "Connection to the database failed"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Query rate limit data",
+        "tags": [
+          "analytics"
+        ],
+        "x-speakeasy-name-override": "getRatelimits"
+      }
+    },
     "/v2/analytics.getVerifications": {
       "post": {
-        "description": "Execute custom SQL queries against your key verification analytics.\nFor complete documentation including available tables, columns, data types, query examples, see the schema reference in the API documentation.\n",
+        "description": "Execute custom SQL queries against your key verification analytics. CTEs, subqueries, UNION, and EXCEPT are supported.\nQueries must use one of the five public aliases: `key_verifications_v1`, `key_verifications_per_minute_v1`, `key_verifications_per_hour_v1`, `key_verifications_per_day_v1`, or `key_verifications_per_month_v1`. Physical `default.*` table names are unsupported.\nQueries are always restricted to the authenticated workspace. Wildcard analytics permission can read every API in that workspace; API-scoped permissions automatically restrict results to the permitted APIs.\nFor complete documentation including available tables, columns, data types, query examples, see the schema reference in the API documentation.\n",
         "operationId": "analytics.getVerifications",
         "requestBody": {
           "content": {
@@ -6628,7 +6789,7 @@
                 }
               }
             },
-            "description": "Invalid SQL query or blocked operation"
+            "description": "Invalid SQL query, blocked operation, or missing required authentication"
           },
           "401": {
             "content": {
@@ -6638,7 +6799,7 @@
                 }
               }
             },
-            "description": "Missing or invalid authentication"
+            "description": "Invalid authentication credentials"
           },
           "403": {
             "content": {
@@ -6649,16 +6810,6 @@
               }
             },
             "description": "Insufficient permissions"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotFoundErrorResponse"
-                }
-              }
-            },
-            "description": "Referenced API or identity not found"
           },
           "422": {
             "content": {
