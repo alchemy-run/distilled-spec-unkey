@@ -5679,8 +5679,7 @@
         "type": "object",
         "required": [
           "limit",
-          "windowMs",
-          "identifier"
+          "windowMs"
         ],
         "properties": {
           "limit": {
@@ -5696,17 +5695,34 @@
             "description": "Window duration in milliseconds."
           },
           "identifier": {
-            "$ref": "#/components/schemas/RatelimitIdentifier"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RatelimitIdentifier"
+              }
+            ],
+            "deprecated": true,
+            "description": "Deprecated. Accepted for compatibility with old clients. Use\n`identifiers` with one entry. Responses always return `identifiers`."
+          },
+          "identifiers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RatelimitIdentifier"
+            },
+            "minItems": 1,
+            "maxItems": 5,
+            "description": "Ordered list of sources that form a compound rate limit key. The\ngateway resolves each source for each request. Each unique\ncombination of resolved values has its own counter. All counters use\nthe same limit and window. Example: `[authenticatedSubject, path]`\nlimits each subject separately on each path."
           }
         },
         "additionalProperties": false,
-        "description": "Rate limits matching requests.",
+        "description": "Rate limits matching requests. Set `identifiers` with 1 to 5 sources.\nThe deprecated `identifier` field is accepted in place of a one-entry\n`identifiers` list; set exactly one of the two.",
         "example": {
           "limit": 100,
           "windowMs": 60000,
-          "identifier": {
-            "remoteIp": {}
-          }
+          "identifiers": [
+            {
+              "remoteIp": {}
+            }
+          ]
         }
       },
       "FirewallPolicy": {
