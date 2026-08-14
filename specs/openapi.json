@@ -5665,6 +5665,12 @@
               "$ref": "#/components/schemas/KeyRatelimit"
             },
             "description": "Rate limits applied during key verification."
+          },
+          "credits": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "description": "Usage credits a matching request deducts from the verified key. Defaults\nto 1. Set to 0 to verify the key without spending credits, or to a higher\nvalue to charge more per request. Keys with unlimited usage are\nunaffected."
           }
         },
         "additionalProperties": false,
