@@ -1028,6 +1028,38 @@
         },
         "additionalProperties": false
       },
+      "V2DomainsDeleteDomainRequestBody": {
+        "type": "object",
+        "required": [
+          "domain"
+        ],
+        "properties": {
+          "domain": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 253,
+            "description": "Identifies a domain by its Unkey ID or by its name. Pass a 'dom_'-prefixed ID, or a fully\nqualified domain name such as 'api.acme.com' without a scheme, port, or path. You can give an\ninternationalized name in Unicode or Punycode form. Both forms address the same domain.\n\nDomain names are unique per workspace, so the name alone addresses the domain. You do not\nneed to supply a project, app, or environment.\n",
+            "example": "api.acme.com"
+          }
+        },
+        "additionalProperties": false
+      },
+      "V2DomainsDeleteDomainResponseBody": {
+        "type": "object",
+        "required": [
+          "meta",
+          "data"
+        ],
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "data": {
+            "$ref": "#/components/schemas/EmptyResponse"
+          }
+        },
+        "additionalProperties": false
+      },
       "V2DomainsGetDomainRequestBody": {
         "type": "object",
         "required": [
@@ -1119,6 +1151,38 @@
           },
           "pagination": {
             "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "additionalProperties": false
+      },
+      "V2DomainsVerifyDomainRequestBody": {
+        "type": "object",
+        "required": [
+          "domain"
+        ],
+        "properties": {
+          "domain": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 253,
+            "description": "Identifies a domain by its name or by its ID. Send the fully qualified domain name, such as\n'api.acme.com', without a scheme, port, or path, or send the domain ID that\ndomains.createDomain returns. You can send an internationalized name in Unicode or in\nPunycode form. Both forms address the same domain.\n",
+            "example": "api.acme.com"
+          }
+        },
+        "additionalProperties": false
+      },
+      "V2DomainsVerifyDomainResponseBody": {
+        "type": "object",
+        "required": [
+          "meta",
+          "data"
+        ],
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "data": {
+            "$ref": "#/components/schemas/EmptyResponse"
           }
         },
         "additionalProperties": false
@@ -1644,10 +1708,13 @@
           },
           "openapi": {
             "$ref": "#/components/schemas/OpenapiPolicy"
+          },
+          "logging": {
+            "$ref": "#/components/schemas/LoggingPolicy"
           }
         },
         "additionalProperties": false,
-        "description": "Partial update of a single policy. Omitted fields keep their stored\nvalues; at least one updatable field must be provided. Providing one of\n`keyauth`, `ratelimit`, `firewall` or `openapi` replaces the policy's\nrule entirely, including switching its type; at most one may be set."
+        "description": "Partial update of a single policy. Omitted fields keep their stored\nvalues; at least one updatable field must be provided. Providing one of\n`keyauth`, `ratelimit`, `firewall`, `openapi` or `logging` replaces the\npolicy's rule entirely, including switching its type; at most one may be\nset."
       },
       "V2GatewayUpdatePolicyResponseBody": {
         "type": "object",
@@ -5581,10 +5648,13 @@
           },
           "openapi": {
             "$ref": "#/components/schemas/OpenapiPolicy"
+          },
+          "logging": {
+            "$ref": "#/components/schemas/LoggingPolicy"
           }
         },
         "additionalProperties": false,
-        "description": "A stored gateway policy as returned by list endpoints. Exactly one of\n`keyauth`, `ratelimit`, `firewall` or `openapi` is set.",
+        "description": "A stored gateway policy as returned by list endpoints. Exactly one of\n`keyauth`, `ratelimit`, `firewall`, `openapi` or `logging` is set.",
         "example": {
           "id": "pol_2gJbXhAr4",
           "name": "Block internal paths",
@@ -5756,6 +5826,45 @@
         "additionalProperties": false,
         "description": "Validates matching requests against the app's uploaded OpenAPI spec. Has no\nconfiguration of its own. If no spec has been uploaded for the deployment,\nthe policy is a no-op and requests pass through unvalidated.",
         "example": {}
+      },
+      "LoggingPolicy": {
+        "type": "object",
+        "properties": {
+          "requestHeaders": {
+            "type": "boolean",
+            "default": false,
+            "description": "Capture request headers, the user agent, and the client IP. The user\nagent and client IP are included because they identify the client."
+          },
+          "responseHeaders": {
+            "type": "boolean",
+            "default": false,
+            "description": "Capture response headers."
+          },
+          "requestBody": {
+            "type": "boolean",
+            "default": false,
+            "description": "Capture the request body, up to the capture limit."
+          },
+          "responseBody": {
+            "type": "boolean",
+            "default": false,
+            "description": "Capture the response body, up to the capture limit."
+          },
+          "query": {
+            "type": "boolean",
+            "default": false,
+            "description": "Capture the query string and query parameters. Query data is a\nseparate opt-in because URLs can contain secrets, for example\n`?api_key=...`."
+          }
+        },
+        "additionalProperties": false,
+        "description": "Adds request data to the log entries of matching requests. The gateway\nalways records a basic log entry for every request: method, host, path,\nstatus, and latency. Each capture setting is a separate opt-in: request\nheaders, response headers, request body, response body, and query data.\nThe policy's `match` expressions select the requests. A policy without\n`match` expressions matches every request. If more than one enabled\nlogging policy matches a request, the gateway combines their settings.\nThe gateway always redacts the `Authorization` header and configured key\nlocations before it stores headers or query data.",
+        "example": {
+          "requestHeaders": true,
+          "responseHeaders": true,
+          "requestBody": true,
+          "responseBody": true,
+          "query": true
+        }
       },
       "PathMatch": {
         "type": "object",
@@ -6058,10 +6167,13 @@
           },
           "openapi": {
             "$ref": "#/components/schemas/OpenapiPolicy"
+          },
+          "logging": {
+            "$ref": "#/components/schemas/LoggingPolicy"
           }
         },
         "additionalProperties": false,
-        "description": "A gateway policy. Exactly one of `keyauth`, `ratelimit`, `firewall` or\n`openapi` must be set. The server generates an id for every policy it\nstores.",
+        "description": "A gateway policy. Exactly one of `keyauth`, `ratelimit`, `firewall`,\n`openapi` or `logging` must be set. The server generates an id for every\npolicy it stores.",
         "example": {
           "name": "Block internal paths",
           "enabled": true,
@@ -10280,6 +10392,237 @@
         "x-unkey-idempotency": "conditionally-idempotent"
       }
     },
+    "/v2/domains.deleteDomain": {
+      "post": {
+        "description": "Delete a custom domain from your workspace.\n\nAddress the domain by its id or by its name. Names are unique per workspace, so\n`api.acme.com` is enough.\n\nUnkey stops serving the domain. Later requests fail with a certificate error. The DNS\nrecords at your provider stay in place.\n\n**Required Permissions**\n\nYour root key must have one of the following permissions:\n- `environment.*.delete_domain` (to delete domains in any environment)\n- `environment.<environment_id>.delete_domain` (to delete domains in a specific environment)\n",
+        "operationId": "domains.deleteDomain",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "byId": {
+                  "description": "Uses the id that domains.createDomain returned.",
+                  "summary": "Delete by domain ID",
+                  "value": {
+                    "domain": "dom_1234abcd"
+                  }
+                },
+                "byName": {
+                  "description": "The name is unique per workspace. It addresses the domain on its own.",
+                  "summary": "Delete by domain name",
+                  "value": {
+                    "domain": "api.acme.com"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/V2DomainsDeleteDomainRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "success": {
+                    "description": "The domain and its routing were removed before the response returned.",
+                    "summary": "Domain deleted",
+                    "value": {
+                      "data": {},
+                      "meta": {
+                        "requestId": "req_1234abcd"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V2DomainsDeleteDomainResponseBody"
+                }
+              }
+            },
+            "description": "Successfully deleted the domain.\n"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalidIdentifier": {
+                    "description": "The schema only bounds the identifier's length. An identifier that is neither a valid name nor a stored id returns a 404.",
+                    "summary": "Identifier too short",
+                    "value": {
+                      "error": {
+                        "detail": "The domain identifier must be between 4 and 253 characters.",
+                        "errors": [
+                          {
+                            "fix": "Pass a domain name such as 'api.acme.com' or an id such as 'dom_1234abcd'",
+                            "location": "body.domain",
+                            "message": "minLength must be at least 4 characters"
+                          }
+                        ],
+                        "status": 400,
+                        "title": "Bad Request",
+                        "type": "validation-error"
+                      },
+                      "meta": {
+                        "requestId": "req_1234abcd"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalidRootKey": {
+                    "summary": "Root key not found",
+                    "value": {
+                      "error": {
+                        "detail": "The provided root key is invalid.",
+                        "status": 401,
+                        "title": "Unauthorized",
+                        "type": "unauthorized"
+                      },
+                      "meta": {
+                        "requestId": "req_1234abcd"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "keyDisabled": {
+                    "summary": "Root key disabled",
+                    "value": {
+                      "error": {
+                        "detail": "The provided root key is disabled.",
+                        "status": 403,
+                        "title": "Forbidden",
+                        "type": "forbidden"
+                      },
+                      "meta": {
+                        "requestId": "req_1234abcd"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden - The root key or its workspace is disabled. A root key that simply lacks\n`environment.*.delete_domain` receives a 404 instead, so permissions cannot be used to\ndiscover which domains exist.\n"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "domainNotFound": {
+                    "summary": "Domain not found",
+                    "value": {
+                      "error": {
+                        "detail": "The requested domain does not exist.",
+                        "status": 404,
+                        "title": "Not Found",
+                        "type": "not-found"
+                      },
+                      "meta": {
+                        "requestId": "req_1234abcd"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found - The domain does not exist in your workspace, it was already deleted, or your\nroot key may not delete it.\n"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "rateLimited": {
+                    "summary": "Workspace rate limit exceeded",
+                    "value": {
+                      "error": {
+                        "detail": "You have exceeded the rate limit for this operation. Retry after the window resets.",
+                        "status": 429,
+                        "title": "Too Many Requests",
+                        "type": "rate-limited"
+                      },
+                      "meta": {
+                        "requestId": "req_1234abcd"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/TooManyRequestsErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "internalError": {
+                    "summary": "Unexpected server error",
+                    "value": {
+                      "error": {
+                        "detail": "An unexpected error occurred. Contact support@unkey.com with the requestId.",
+                        "status": 500,
+                        "title": "Internal Server Error",
+                        "type": "internal-server-error"
+                      },
+                      "meta": {
+                        "requestId": "req_1234abcd"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponse"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete domain",
+        "tags": [
+          "domains"
+        ],
+        "x-speakeasy-name-override": "deleteDomain",
+        "x-unkey-idempotency": "idempotent"
+      }
+    },
     "/v2/domains.getDomain": {
       "post": {
         "description": "Retrieve a custom domain and its verification status.\n\nAddress the domain by its id or by its name. Names are unique per workspace, so\n`api.acme.com` is sufficient. You do not need to supply a project, app, or environment.\n\nUse this endpoint to poll after `domains.createDomain`. Verification runs in the background\nand checks DNS approximately each minute.\n\n`status: verified` means the domain is verified. Unkey has configured routing and requested a\ncertificate. Each entry in `dnsRecords` has a `verified` flag. The flag shows which records\nUnkey has read back, so you can see which records are still missing. Some providers hide a\nrecord from DNS lookups, for example a proxied or flattened routing record. Such a record stays\n`false` while it serves traffic. `verificationError` gives the reason for the last failed\nattempt.\n\n`dnsRecords` contains the same values that `domains.createDomain` returned. Use it to recover\nthe values without creating the domain again.\n\n**Important**: verification stops 24 hours after the domain was created, and the status becomes\n`failed`. The window starts at `createdAt`, not at the last attempt.\n\n**Required Permissions**\n\nYour root key must have one of the following permissions:\n- `environment.*.read_domain` (to read domains in any environment)\n- `environment.<environment_id>.read_domain` (to read domains in a specific environment)\n",
@@ -10975,6 +11318,263 @@
           "domains"
         ],
         "x-speakeasy-name-override": "listDomains",
+        "x-unkey-idempotency": "idempotent"
+      }
+    },
+    "/v2/domains.verifyDomain": {
+      "post": {
+        "description": "Restart verification for a custom domain.\n\nAddress the domain by its ID or by its name. Names are unique per workspace, so\n`api.acme.com` is enough.\n\nCall this after you correct the DNS records of a domain that shows `failed`, or to give a\n`pending` domain a new 24-hour verification period. The domain goes back to `pending` and\nthe 24-hour period starts again.\n\nThe endpoint returns when Unkey accepts the retry. Poll `domains.getDomain` for the result.\n\nA domain that is already `verified` returns a 412.\n\n**Required Permissions**\n\nYour root key must have one of the following permissions:\n- `environment.*.verify_domain` (to verify domains in any environment)\n- `environment.<environment_id>.verify_domain` (to verify domains in a specific environment)\n",
+        "operationId": "domains.verifyDomain",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "byId": {
+                  "description": "The domains.createDomain operation returns this ID.",
+                  "summary": "Verify by domain ID",
+                  "value": {
+                    "domain": "dom_1234abcd"
+                  }
+                },
+                "byName": {
+                  "description": "The name is unique per workspace. It addresses the domain on its own.",
+                  "summary": "Verify by domain name",
+                  "value": {
+                    "domain": "api.acme.com"
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/V2DomainsVerifyDomainRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "accepted": {
+                    "description": "The domain went back to `pending`. Poll domains.getDomain to see the result.",
+                    "summary": "Verification restarted",
+                    "value": {
+                      "data": {},
+                      "meta": {
+                        "requestId": "req_1234abcd"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V2DomainsVerifyDomainResponseBody"
+                }
+              }
+            },
+            "description": "Verification retry accepted. The workflow runs in the background.\n"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalidIdentifier": {
+                    "description": "The schema limits only the length of the identifier. An identifier that is neither a valid name nor a stored ID returns a 404.",
+                    "summary": "Identifier too short",
+                    "value": {
+                      "error": {
+                        "detail": "The domain identifier must be between 4 and 253 characters.",
+                        "errors": [
+                          {
+                            "fix": "Pass a domain name such as 'api.acme.com' or an id such as 'dom_1234abcd'",
+                            "location": "body.domain",
+                            "message": "minLength must be at least 4 characters"
+                          }
+                        ],
+                        "status": 400,
+                        "title": "Bad Request",
+                        "type": "validation-error"
+                      },
+                      "meta": {
+                        "requestId": "req_1234abcd"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestErrorResponse"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalidRootKey": {
+                    "summary": "Root key not found",
+                    "value": {
+                      "error": {
+                        "detail": "The provided root key is invalid.",
+                        "status": 401,
+                        "title": "Unauthorized",
+                        "type": "unauthorized"
+                      },
+                      "meta": {
+                        "requestId": "req_1234abcd"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "keyDisabled": {
+                    "summary": "Root key disabled",
+                    "value": {
+                      "error": {
+                        "detail": "The provided root key is disabled.",
+                        "status": 403,
+                        "title": "Forbidden",
+                        "type": "forbidden"
+                      },
+                      "meta": {
+                        "requestId": "req_1234abcd"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden - The root key or its workspace is disabled. A root key that only lacks\n`environment.*.verify_domain` receives a 404 instead.\n"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "domainNotFound": {
+                    "summary": "Domain not found",
+                    "value": {
+                      "error": {
+                        "detail": "The requested domain does not exist.",
+                        "status": 404,
+                        "title": "Not Found",
+                        "type": "not-found"
+                      },
+                      "meta": {
+                        "requestId": "req_1234abcd"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found - The domain does not exist in your workspace, or it was deleted, or your\nroot key is not permitted to verify it.\n"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "alreadyVerified": {
+                    "summary": "Domain already verified",
+                    "value": {
+                      "error": {
+                        "detail": "The domain 'api.acme.com' is already verified. No action is needed.",
+                        "status": 412,
+                        "title": "Precondition Failed",
+                        "type": "precondition-failed"
+                      },
+                      "meta": {
+                        "requestId": "req_1234abcd"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/PreconditionFailedErrorResponse"
+                }
+              }
+            },
+            "description": "Precondition Failed - The domain is already verified. There is nothing to retry.\n"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "rateLimited": {
+                    "summary": "Workspace rate limit exceeded",
+                    "value": {
+                      "error": {
+                        "detail": "You have exceeded the rate limit for this operation. Retry after the window resets.",
+                        "status": 429,
+                        "title": "Too Many Requests",
+                        "type": "rate-limited"
+                      },
+                      "meta": {
+                        "requestId": "req_1234abcd"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/TooManyRequestsErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "internalError": {
+                    "summary": "Unexpected server error",
+                    "value": {
+                      "error": {
+                        "detail": "An unexpected error occurred. Contact support@unkey.com with the requestId.",
+                        "status": 500,
+                        "title": "Internal Server Error",
+                        "type": "internal-server-error"
+                      },
+                      "meta": {
+                        "requestId": "req_1234abcd"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponse"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Verify domain",
+        "tags": [
+          "domains"
+        ],
+        "x-speakeasy-name-override": "verifyDomain",
         "x-unkey-idempotency": "idempotent"
       }
     },
