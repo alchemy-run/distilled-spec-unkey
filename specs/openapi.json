@@ -9,14 +9,14 @@
         "x-speakeasy-name-override": "rootKey"
       },
       "portalSession": {
-        "description": "Browser session cookie for the Customer Portal. Set by `portal.exchangeSession`\nand sent automatically by the browser on `portal.*` requests. Portal sessions\nare scoped to a single end user (external identity) and can only access the\n`portal.*` routes.",
+        "description": "Session cookie for the Customer Portal. Set by `portal.exchangeCode`\nand sent automatically by the browser on `portal.*` requests. Portal sessions\nare scoped to a single end user (external identity) and can only access the\n`portal.*` routes.",
         "in": "cookie",
         "name": "portal_session",
         "type": "apiKey"
       }
     },
     "schemas": {
-      "V2AnalyticsGetRatelimitsRequestBody": {
+      "V2AnalyticsGetGatewayRequestsRequestBody": {
         "type": "object",
         "required": [
           "query"
@@ -24,12 +24,12 @@
         "properties": {
           "query": {
             "type": "string",
-            "description": "SQL query to execute against your rate limit analytics data.\nQueries may reference only the five public aliases: `ratelimits_v1`, `ratelimits_per_minute_v1`, `ratelimits_per_hour_v1`, `ratelimits_per_day_v1`, or `ratelimits_per_month_v1`. Physical `default.*` table names are unsupported. CTEs, subqueries, UNION, and EXCEPT are supported.\nQueries are always restricted to the authenticated workspace. Wildcard analytics permission can read every namespace in that workspace; namespace-scoped permissions automatically restrict results to the permitted namespace IDs.\nWorkspace retention and query limits apply.\n",
-            "example": "SELECT namespace_id, COUNT(*) AS total FROM ratelimits_v1 WHERE namespace_id = 'rlns_123' GROUP BY namespace_id"
+            "description": "The SQL query to run on your gateway request data.\nA query can use only the public alias `gateway_requests_v1`. The physical `default.*` table names are not permitted.\nOnly SELECT queries are permitted. CTEs, subqueries, UNION, and EXCEPT are also permitted.\nUnkey limits each query to the workspace of the root key. To get the data for one project, app, or environment, add a filter on `project_id`, `app_id`, or `environment_id`.\nThe workspace retention period and the workspace query limits apply.\n",
+            "example": "SELECT path, count() AS total FROM gateway_requests_v1 WHERE response_status >= 500 AND time >= toUnixTimestamp64Milli(now64(3) - INTERVAL 24 HOUR) GROUP BY path ORDER BY total DESC LIMIT 10"
           }
         }
       },
-      "V2AnalyticsGetRatelimitsResponseBody": {
+      "V2AnalyticsGetGatewayRequestsResponseBody": {
         "type": "object",
         "required": [
           "meta",
@@ -40,7 +40,7 @@
             "$ref": "#/components/schemas/Meta"
           },
           "data": {
-            "$ref": "#/components/schemas/V2AnalyticsGetRatelimitsResponseData"
+            "$ref": "#/components/schemas/V2AnalyticsGetGatewayRequestsResponseData"
           }
         }
       },
@@ -171,6 +171,62 @@
           }
         },
         "description": "Error response when a required service is temporarily unavailable. This indicates that the service exists but cannot be reached or is not responding.\n\nWhen you encounter this error:\n- The service is likely experiencing temporary issues\n- Retrying the request after a short delay may succeed\n- If the error persists, the service may be undergoing maintenance\n- Contact Unkey support if the issue continues"
+      },
+      "V2AnalyticsGetRatelimitsRequestBody": {
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "SQL query to execute against your rate limit analytics data.\nQueries may reference only the five public aliases: `ratelimits_v1`, `ratelimits_per_minute_v1`, `ratelimits_per_hour_v1`, `ratelimits_per_day_v1`, or `ratelimits_per_month_v1`. Physical `default.*` table names are unsupported. CTEs, subqueries, UNION, and EXCEPT are supported.\nQueries are always restricted to the authenticated workspace. Wildcard analytics permission can read every namespace in that workspace; namespace-scoped permissions automatically restrict results to the permitted namespace IDs.\nWorkspace retention and query limits apply.\n",
+            "example": "SELECT namespace_id, COUNT(*) AS total FROM ratelimits_v1 WHERE namespace_id = 'rlns_123' GROUP BY namespace_id"
+          }
+        }
+      },
+      "V2AnalyticsGetRatelimitsResponseBody": {
+        "type": "object",
+        "required": [
+          "meta",
+          "data"
+        ],
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "data": {
+            "$ref": "#/components/schemas/V2AnalyticsGetRatelimitsResponseData"
+          }
+        }
+      },
+      "V2AnalyticsGetRuntimeLogsRequestBody": {
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The SQL query for your runtime log data.\nA query can use only the public alias `runtime_logs_v1`. The physical `default.*` table name is not permitted. CTEs, subqueries, UNION, and EXCEPT are permitted.\nOnly SELECT queries are permitted.\nUnkey limits each query to the workspace of the root key. To get the logs of one project, app, environment, or deployment, add a filter on `project_id`, `app_id`, `environment_id`, or `deployment_id`.\nThe workspace retention period and the workspace query limits apply.\n",
+            "example": "SELECT time, severity, message FROM runtime_logs_v1 WHERE lower(message) LIKE '%timeout%' ORDER BY time DESC LIMIT 100"
+          }
+        }
+      },
+      "V2AnalyticsGetRuntimeLogsResponseBody": {
+        "type": "object",
+        "required": [
+          "meta",
+          "data"
+        ],
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "data": {
+            "$ref": "#/components/schemas/V2AnalyticsGetRuntimeLogsResponseData"
+          }
+        }
       },
       "V2AnalyticsGetVerificationsRequestBody": {
         "type": "object",
@@ -3219,18 +3275,13 @@
       "V2PortalCreateSessionRequestBody": {
         "type": "object",
         "required": [
-          "slug",
+          "portal",
           "externalId",
-          "permissions"
+          "scopes"
         ],
         "properties": {
-          "slug": {
-            "type": "string",
-            "minLength": 3,
-            "maxLength": 64,
-            "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
-            "description": "The human-readable slug of the portal configuration to create the session against.\nIdentifies which app's portal the end user will access.\nMust be 3-64 characters, lowercase alphanumeric and hyphens only,\nmust not start or end with a hyphen, and must not contain consecutive hyphens.\n",
-            "example": "my-portal"
+          "portal": {
+            "$ref": "#/components/schemas/ResourceIdentifier"
           },
           "externalId": {
             "type": "string",
@@ -3239,7 +3290,7 @@
             "description": "The end user's identifier in the customer's system.\nAccepts arbitrary string values (user IDs, emails, UUIDs, etc.).\n",
             "example": "user_123"
           },
-          "permissions": {
+          "scopes": {
             "type": "array",
             "items": {
               "type": "string",
@@ -3251,7 +3302,7 @@
               ]
             },
             "minItems": 1,
-            "description": "The capabilities granted to the end user in the Portal, from a fixed\nvocabulary. All capabilities are scoped to this end user: key capabilities\n(`keys:*`) apply only to keys the end user owns within the keyspace\nconfigured on the portal configuration, and `analytics:read` returns only\nthe end user's own verification events. An end user can never see another\nidentity's keys or analytics.\n\nTab visibility is derived from the capabilities:\n- Keys tab: any `keys:*` capability\n- Analytics tab: `analytics:read`\n- Docs tab: visible when any capability is present\n",
+            "description": "The capabilities granted to the end user in the Portal, from a fixed\nvocabulary. All capabilities are scoped to this end user: key capabilities\n(`keys:*`) apply only to keys the end user owns within the keyspace\nconfigured on the portal, and `analytics:read` returns only the end user's\nown verification events. An end user can never see another identity's keys\nor analytics.\n\nTab visibility is derived from the scopes:\n- Keys tab: any `keys:*` scope\n- Analytics tab: `analytics:read`\n- Docs tab: visible when any scope is present\n",
             "example": [
               "keys:read",
               "keys:reroll",
@@ -3262,6 +3313,13 @@
             "type": "boolean",
             "default": false,
             "description": "When true, creates a preview session for testing the portal experience.\n"
+          },
+          "returnUrl": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 500,
+            "description": "Absolute URL the end user is sent back to when they leave the portal, or\nwhen their session expires mid-visit. Set per session rather than per\nportal, so one portal can serve several entry points and return each user\nto the page they came from.\n\nWhen omitted, the portal shows no return link.\n",
+            "example": "https://app.example.com/settings/api-keys"
           }
         },
         "additionalProperties": false
@@ -3282,23 +3340,23 @@
         },
         "additionalProperties": false
       },
-      "V2PortalExchangeSessionRequestBody": {
+      "V2PortalExchangeCodeRequestBody": {
         "type": "object",
         "required": [
-          "sessionId"
+          "code"
         ],
         "properties": {
-          "sessionId": {
+          "code": {
             "type": "string",
             "minLength": 1,
             "x-unkey-redact": true,
-            "description": "The session token ID received from `portal.createSession`.\nMust be valid, unexpired, and not previously exchanged.\n",
+            "description": "The exchange code carried by the portal URL from `portal.createSession`.\nMust be valid, unexpired, and not previously redeemed.\n",
             "example": "pst_abc123def456"
           }
         },
         "additionalProperties": false
       },
-      "V2PortalExchangeSessionResponseBody": {
+      "V2PortalExchangeCodeResponseBody": {
         "type": "object",
         "required": [
           "meta",
@@ -3309,7 +3367,7 @@
             "$ref": "#/components/schemas/Meta"
           },
           "data": {
-            "$ref": "#/components/schemas/V2PortalExchangeSessionResponseData"
+            "$ref": "#/components/schemas/V2PortalExchangeCodeResponseData"
           }
         },
         "additionalProperties": false
@@ -3875,17 +3933,17 @@
         "additionalProperties": false,
         "description": "Metadata object included in every API response. This provides context about the request and is essential for debugging, audit trails, and support inquiries. The `requestId` is particularly important when troubleshooting issues with the Unkey support team."
       },
-      "V2AnalyticsGetRatelimitsResponseData": {
+      "V2AnalyticsGetGatewayRequestsResponseData": {
         "type": "array",
-        "description": "Array of rate limit rows returned by the query. Fields vary based on the SQL SELECT clause.",
+        "description": "The gateway request rows that the query returned. The SELECT clause of the query controls the fields in each row.",
         "items": {
           "type": "object",
           "additionalProperties": true,
-          "description": "Dynamic row with fields determined by the query."
+          "description": "One result row. The query controls its fields."
         },
         "example": [
           {
-            "namespace_id": "rlns_123",
+            "path": "/v1/orders",
             "total": 1234
           }
         ]
@@ -3972,6 +4030,37 @@
         ],
         "type": "object",
         "description": "Individual validation error details. Each validation error provides precise information about what failed, where it failed, and how to fix it, enabling efficient error resolution."
+      },
+      "V2AnalyticsGetRatelimitsResponseData": {
+        "type": "array",
+        "description": "Array of rate limit rows returned by the query. Fields vary based on the SQL SELECT clause.",
+        "items": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Dynamic row with fields determined by the query."
+        },
+        "example": [
+          {
+            "namespace_id": "rlns_123",
+            "total": 1234
+          }
+        ]
+      },
+      "V2AnalyticsGetRuntimeLogsResponseData": {
+        "type": "array",
+        "description": "The runtime log rows that the query returned. The SELECT clause of the query sets the fields of each row.",
+        "items": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "One result row. The query sets its fields."
+        },
+        "example": [
+          {
+            "time": 1755000000000,
+            "severity": "error",
+            "message": "upstream timeout after 30s"
+          }
+        ]
       },
       "V2AnalyticsGetVerificationsResponseData": {
         "type": "array",
@@ -6945,43 +7034,42 @@
       "V2PortalCreateSessionResponseData": {
         "type": "object",
         "required": [
-          "sessionId",
+          "id",
           "url"
         ],
         "properties": {
-          "sessionId": {
+          "id": {
             "type": "string",
-            "x-unkey-redact": true,
-            "description": "The short-lived session token ID. Valid for 15 minutes and can be exchanged once for a browser session.\n",
-            "example": "pst_abc123def456"
+            "description": "The portal session's identifier. Not a credential: it is safe to log and\nto store against your own records of the end user's visit.\n",
+            "example": "ps_abc123def456"
           },
           "url": {
             "type": "string",
             "format": "uri",
             "x-unkey-redact": true,
-            "description": "The full portal URL with the session parameter. Redirect the end user to this URL.\n",
-            "example": "https://portal.unkey.com/?session=pst_abc123def456"
+            "description": "The full portal URL to redirect the end user to. Carries a single-use\nexchange code that is valid for 15 minutes.\n",
+            "example": "https://portal.unkey.com/?code=pst_abc123def456"
           }
         },
         "additionalProperties": false
       },
-      "V2PortalExchangeSessionResponseData": {
+      "V2PortalExchangeCodeResponseData": {
         "type": "object",
         "required": [
-          "token",
+          "accessToken",
           "expiresAt"
         ],
         "properties": {
-          "token": {
+          "accessToken": {
             "type": "string",
             "x-unkey-redact": true,
-            "description": "The browser session token. Store this as an httpOnly cookie for subsequent portal requests.\n",
-            "example": "ps_xyz789abc123"
+            "description": "The portal access token. Store this as an httpOnly cookie for subsequent portal requests.\n",
+            "example": "pat_xyz789abc123"
           },
           "expiresAt": {
             "type": "integer",
             "format": "int64",
-            "description": "Unix timestamp in milliseconds when the browser session expires (24 hours from creation).\n",
+            "description": "Unix timestamp in milliseconds when the access token expires (24 hours from creation).\n",
             "example": 1711386400000
           }
         },
@@ -7297,6 +7385,124 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/v2/analytics.getGatewayRequests": {
+      "post": {
+        "description": "A query can use only the public alias `gateway_requests_v1`. CTEs, subqueries, UNION, and EXCEPT are permitted.\nThe root key must have the `project.*.read_gateway_requests` permission.\nUnkey limits each query to the workspace of the root key. To get the data for one project, app, or environment, add a filter on `project_id`, `app_id`, or `environment_id`.\nThe workspace retention period and the workspace query limits apply.\nFor the columns and more query examples, see the gateway request analytics documentation.\n",
+        "operationId": "analytics.getGatewayRequests",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2AnalyticsGetGatewayRequestsRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2AnalyticsGetGatewayRequestsResponseBody"
+                }
+              }
+            },
+            "description": "Query executed successfully"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid SQL query, blocked operation, or missing required authentication"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid authentication credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponse"
+                }
+              }
+            },
+            "description": "Insufficient permissions"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreconditionFailedErrorResponse"
+                }
+              }
+            },
+            "description": "Analytics is not configured for the workspace"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnprocessableEntityErrorResponse"
+                }
+              }
+            },
+            "description": "Query exceeds workspace query limits"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TooManyRequestsErrorResponse"
+                }
+              }
+            },
+            "description": "Query quota exceeded"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponse"
+                }
+              }
+            },
+            "description": "Query execution failed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceUnavailableErrorResponse"
+                }
+              }
+            },
+            "description": "Connection to the database failed"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Query gateway request data",
+        "tags": [
+          "analytics"
+        ],
+        "x-speakeasy-name-override": "getGatewayRequests"
+      }
+    },
     "/v2/analytics.getRatelimits": {
       "post": {
         "description": "Queries may reference only the five public rate limit analytics aliases: `ratelimits_v1`, `ratelimits_per_minute_v1`, `ratelimits_per_hour_v1`, `ratelimits_per_day_v1`, or `ratelimits_per_month_v1`. CTEs, subqueries, UNION, and EXCEPT are supported.\nQueries are always restricted to the authenticated workspace. Wildcard analytics permission can read every namespace in that workspace; namespace-scoped permissions automatically restrict results to the permitted namespace IDs.\nWorkspace retention and query limits apply.\n",
@@ -7413,6 +7619,124 @@
           "analytics"
         ],
         "x-speakeasy-name-override": "getRatelimits"
+      }
+    },
+    "/v2/analytics.getRuntimeLogs": {
+      "post": {
+        "description": "A query can use only the public alias `runtime_logs_v1`. CTEs, subqueries, UNION, and EXCEPT are permitted.\nThe root key must have the `project.*.read_runtime_logs` permission.\nUnkey limits each query to the workspace of the root key. To get the logs of one project, app, environment, or deployment, add a filter on `project_id`, `app_id`, `environment_id`, or `deployment_id`.\nThe workspace retention period and the workspace query limits apply.\nFor the table, the columns, and more query examples, see [Query runtime logs](/platform/analytics/get-runtime-logs).\n",
+        "operationId": "analytics.getRuntimeLogs",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/V2AnalyticsGetRuntimeLogsRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V2AnalyticsGetRuntimeLogsResponseBody"
+                }
+              }
+            },
+            "description": "Query executed successfully"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid SQL query, blocked operation, or missing required authentication"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid authentication credentials"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponse"
+                }
+              }
+            },
+            "description": "Insufficient permissions"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreconditionFailedErrorResponse"
+                }
+              }
+            },
+            "description": "Analytics is not configured for the workspace"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnprocessableEntityErrorResponse"
+                }
+              }
+            },
+            "description": "Query exceeds workspace query limits"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TooManyRequestsErrorResponse"
+                }
+              }
+            },
+            "description": "Query quota exceeded"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponse"
+                }
+              }
+            },
+            "description": "Query execution failed"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceUnavailableErrorResponse"
+                }
+              }
+            },
+            "description": "Connection to the database failed"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Query runtime log data",
+        "tags": [
+          "analytics"
+        ],
+        "x-speakeasy-name-override": "getRuntimeLogs"
       }
     },
     "/v2/analytics.getVerifications": {
@@ -16319,7 +16643,7 @@
     },
     "/v2/portal.createSession": {
       "post": {
-        "description": "Create a short-lived session token for an end user to access the Customer Portal.\n\nThe returned session ID is valid for 15 minutes and can be exchanged exactly once\nfor a 24-hour browser session via `portal.exchangeSession`. Redirect the end user\nto the returned URL to start the portal experience.\n\n**Required Permissions**\n\nYour root key must be associated with a workspace that has an enabled portal configuration.\n",
+        "description": "Create a portal session for an end user and get the URL to redirect them to.\n\nThe URL carries a single-use exchange code valid for 15 minutes, which the portal\nredeems exactly once for a 24-hour access token via `portal.exchangeCode`.\n\n**Required Permissions**\n\nYour root key must be associated with a workspace that has an enabled portal.\n",
         "operationId": "portal.createSession",
         "requestBody": {
           "content": {
@@ -16340,10 +16664,10 @@
                 }
               }
             },
-            "description": "Session token created successfully. Redirect the end user to the returned URL.\n",
+            "description": "Session created successfully. Redirect the end user to the returned URL.\n",
             "headers": {
               "Cache-Control": {
-                "description": "Prevents caching of the session token response.",
+                "description": "Prevents caching of the response, which carries an exchange code.",
                 "schema": {
                   "example": "no-store",
                   "type": "string"
@@ -16434,15 +16758,15 @@
         "x-speakeasy-name-override": "createSession"
       }
     },
-    "/v2/portal.exchangeSession": {
+    "/v2/portal.exchangeCode": {
       "post": {
-        "description": "Exchange a short-lived session token for a long-lived browser session.\n\nThis endpoint is unauthenticated. The session token itself serves as proof of authorization.\nEach token can only be exchanged once; subsequent attempts return 401.\n\nThe returned browser session token is valid for 24 hours and should be stored as an\nhttpOnly cookie or used in the Authorization header for subsequent API calls.\n",
-        "operationId": "portal.exchangeSession",
+        "description": "Exchange a short-lived code for a long-lived portal access token.\n\nThis endpoint is unauthenticated. The code itself serves as proof of authorization.\nEach code can only be redeemed once; subsequent attempts return 401.\n\nThe returned access token is valid for 24 hours and should be stored as an\nhttpOnly cookie or used in the Authorization header for subsequent API calls.\n",
+        "operationId": "portal.exchangeCode",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/V2PortalExchangeSessionRequestBody"
+                "$ref": "#/components/schemas/V2PortalExchangeCodeRequestBody"
               }
             }
           },
@@ -16453,14 +16777,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/V2PortalExchangeSessionResponseBody"
+                  "$ref": "#/components/schemas/V2PortalExchangeCodeResponseBody"
                 }
               }
             },
-            "description": "Session exchanged successfully. Use the returned token for subsequent API calls.\n",
+            "description": "Code exchanged successfully. Use the returned access token for subsequent API calls.\n",
             "headers": {
               "Cache-Control": {
-                "description": "Prevents caching of the session token response.",
+                "description": "Prevents caching of the access token response.",
                 "schema": {
                   "example": "no-store",
                   "type": "string"
@@ -16495,7 +16819,7 @@
                 }
               }
             },
-            "description": "Unauthorized — session is invalid, expired, or already exchanged"
+            "description": "Unauthorized — code is invalid, expired, or already redeemed"
           },
           "429": {
             "content": {
@@ -16519,12 +16843,12 @@
           }
         },
         "security": [],
-        "summary": "Exchange session token",
+        "summary": "Exchange portal code",
         "tags": [
           "portal"
         ],
         "x-excluded": true,
-        "x-speakeasy-name-override": "exchangeSession"
+        "x-speakeasy-name-override": "exchangeCode"
       }
     },
     "/v2/portal.getVerifications": {
