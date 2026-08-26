@@ -2734,7 +2734,10 @@
             "description": "Controls usage-based limits for this key through credit consumption.\nOmitting this field preserves current credit settings, while setting null enables unlimited usage.\nCannot configure refill settings when credits is null, and refillDay requires monthly interval.\nEssential for implementing usage-based pricing and subscription quotas.\n"
           },
           "ratelimits": {
-            "type": "array",
+            "type": [
+              "array",
+              "null"
+            ],
             "maxItems": 50,
             "items": {
               "$ref": "#/components/schemas/RatelimitRequest"
@@ -3302,7 +3305,7 @@
               ]
             },
             "minItems": 1,
-            "description": "The capabilities granted to the end user in the Portal, from a fixed\nvocabulary. All capabilities are scoped to this end user: key capabilities\n(`keys:*`) apply only to keys the end user owns within the keyspace\nconfigured on the portal, and `analytics:read` returns only the end user's\nown verification events. An end user can never see another identity's keys\nor analytics.\n\nTab visibility is derived from the scopes:\n- Keys tab: any `keys:*` scope\n- Analytics tab: `analytics:read`\n- Docs tab: visible when any scope is present\n",
+            "description": "The capabilities granted to the end user in the Portal, from a fixed\nvocabulary. All capabilities are scoped to this end user: key capabilities\n(`keys:*`) apply only to keys the end user owns within the keyspace\nconfigured on the portal, and `analytics:read` returns only the end user's\nown verification events. An end user can never see another identity's keys\nor analytics.\n\nTab visibility is derived from the scopes:\n- Keys tab: any `keys:*` scope\n- Analytics tab: `analytics:read`\n- Docs tab: visible when any scope is present\n\n`keys:create` is accepted but has no portal route behind it yet. It is\nstill authorized like the others, so a session minted with it required\n`create_key` on the keyspace at mint time, and a future portal create-key\nroute inherits an enforced ceiling rather than trusting sessions minted\nwhile the capability was inert.\n\nEach scope requires the equivalent permission on your own root key. See\nRequired Permissions on this operation.\n",
             "example": [
               "keys:read",
               "keys:reroll",
@@ -16643,7 +16646,7 @@
     },
     "/v2/portal.createSession": {
       "post": {
-        "description": "Create a portal session for an end user and get the URL to redirect them to.\n\nThe URL carries a single-use exchange code valid for 15 minutes, which the portal\nredeems exactly once for a 24-hour access token via `portal.exchangeCode`.\n\n**Required Permissions**\n\nYour root key must be associated with a workspace that has an enabled portal.\n",
+        "description": "Create a portal session for an end user and get the URL to redirect them to.\n\nThe URL carries a single-use exchange code valid for 15 minutes, which the portal\nredeems exactly once for a 24-hour access token via `portal.exchangeCode`.\n\n**Required Permissions**\n\nAuthorization runs in two stages, and both must pass.\n\nFirst, your root key must have one of the following permissions:\n- `portal.*.create_portal_session` (to mint sessions for any portal in the workspace)\n- `portal.<portal_id>.create_portal_session` (to mint sessions for a specific portal)\n\nSecond, a session can never carry a capability your root key does not itself\nhold. Each requested scope additionally requires the equivalent permission on\nevery keyspace the portal resolves to:\n- `keys:read` requires `api.<api_id>.read_key` **and** `api.<api_id>.read_api`\n- `keys:reroll` and `keys:create` require `api.<api_id>.create_key`, plus\n  `api.<api_id>.encrypt_key` when the keyspace stores encrypted keys\n- `analytics:read` requires `api.<api_id>.read_analytics`\n\nThe `*` form of each is also accepted. Requesting a scope you do not hold\nreturns 403 for the whole request rather than minting a reduced session, so a\nmissing grant is visible instead of surfacing later as a broken portal.\n\nMissing the portal permission itself returns **404**, not 403: a caller who\ncannot mint for a portal is not told whether it exists.\n\nYour root key must also be associated with a workspace that has an enabled portal.\n",
         "operationId": "portal.createSession",
         "requestBody": {
           "content": {
