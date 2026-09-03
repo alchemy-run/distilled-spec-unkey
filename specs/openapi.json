@@ -1524,7 +1524,7 @@
               "type": "string",
               "maxLength": 500
             },
-            "description": "Glob paths that trigger auto-deploys when changed.\nOmit to leave unchanged.\n"
+            "description": "Glob patterns that trigger auto-deploys when matching files change.\nDo not start a pattern with \"/\" or \"./\".\nUse \"src/**\" for everything under a directory and \"**/*.go\" for a file type.\nA pattern with no wildcard matches only that exact file, so \"src\" is not \"src/**\".\nOmit to leave unchanged. Invalid patterns are rejected with a 400.\n"
           },
           "autoDeploy": {
             "type": "boolean",
